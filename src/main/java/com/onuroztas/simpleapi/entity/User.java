@@ -1,18 +1,13 @@
 package com.onuroztas.simpleapi.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-
-import jakarta.persistence.Column;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 
 
 @Entity
+@Table(name = "users")
 public class User {
 
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -22,7 +17,7 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @JsonIgnore
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
     private Boolean enabled = true;
@@ -55,7 +50,7 @@ public class User {
     }
 
     //Setters
-    public void setEmail(String email)  {
+    public void setEmail(String email) {
         this.email = email;
     }
 
@@ -66,3 +61,4 @@ public class User {
     public void setEnabled(Boolean enabled) {
         this.enabled = enabled;
     }
+}
