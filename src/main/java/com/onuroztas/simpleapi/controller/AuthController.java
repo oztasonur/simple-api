@@ -4,9 +4,9 @@ import com.onuroztas.simpleapi.entity.User;
 import com.onuroztas.simpleapi.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -22,10 +21,12 @@ import java.util.Map;
 public class AuthController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuthenticationManager authenticationManager;
 
-    public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.authenticationManager = authenticationManager;
     }
 
     @PostMapping("/login")
@@ -33,21 +34,18 @@ public class AuthController {
         String email = loginRequest.get("email");
         String password = loginRequest.get("password");
 
-        User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new RuntimeException("Invalid credentials"));
-
-        if(passwordEncoder.matches(password, user.getPassword())) {
+        try {
             
-            Authentication authentication = new UsernamePasswordAuthenticationToken(email, null, List.of());
+            Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(email, password)
+            );
+            
+            SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            SecurityContext context = SecurityContextHolder.createEmptyContext();
-            context.setAuthentication(authentication);
-            SecurityContextHolder.setContext(context);
-
-            request.getSession().setAttribute("SPRING_SECURITY_CONTEXT", context);
+            request.getSession().setAttribute("SPRING_SECURITY_CONTEXT", SecurityContextHolder.getContext());
 
             return ResponseEntity.ok("Login successful");
-        } else {
+        } catch (Exception e) {
             return ResponseEntity.status(401).body("Invalid credentials");
         }
     }
@@ -62,6 +60,16 @@ public class AuthController {
         userRepository.save(user);
 
         return ResponseEntity.ok("User registered successfully");
+    }
+
+    @PostMapping("/test-auth")
+    public ResponseEntity<String> testAuth() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated()) {
+            return ResponseEntity.ok("You are authenticated as: " + auth.getName());
+        } else {
+            return ResponseEntity.status(401).body("Not authenticated");
+        }
     }
 
 }
